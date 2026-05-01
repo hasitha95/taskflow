@@ -121,10 +121,44 @@ const deleteTask = async (req, res) => {
   }
 };
 
+// @desc    Upload attachments to a task
+// @route   POST /api/tasks/:id/attachments
+// @access  Protected
+const addAttachments = async (req, res) => {
+  try {
+    const task = await Task.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
+    }
+
+    const newAttachments = req.files.map((file) => ({
+      filename: file.originalname,
+      url: `/uploads/${file.filename}`,
+      size: file.size,
+    }));
+
+    task.attachments.push(...newAttachments);
+    const updatedTask = await task.save();
+
+    res.status(201).json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createTask,
   getTasks,
   getTaskById,
   updateTask,
   deleteTask,
+  addAttachments,
 };
