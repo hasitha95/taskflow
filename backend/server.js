@@ -1,8 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
-require('dotenv').config();
+const taskRoutes = require('./routes/taskRoutes');
+
 
 const app = express();
 
@@ -14,11 +16,12 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-connectDB();
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 });
