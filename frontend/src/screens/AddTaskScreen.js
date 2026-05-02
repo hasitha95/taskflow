@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../api/client';
+import { uploadAttachments } from '../api/attachments';
+import FilePickerSection from '../components/FilePickerSection';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Done'];
 const PRIORITY_OPTIONS = ['High', 'Medium', 'Low'];
@@ -23,6 +25,7 @@ export default function AddTaskScreen({ navigation }) {
   const [status, setStatus] = useState('To Do');
   const [priority, setPriority] = useState('Medium');
   const [dueDate, setDueDate] = useState(null);
+  const [files, setFiles] = useState([]);
   const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -42,13 +45,25 @@ export default function AddTaskScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await client.post('/api/tasks', {
+      const { data: createdTask } = await client.post('/api/tasks', {
         title: title.trim(),
         description: description.trim(),
         status,
         priority,
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       });
+
+      if (files.length > 0) {
+        try {
+          await uploadAttachments(createdTask._id, files);
+        } catch (uploadError) {
+          Alert.alert(
+            'Task saved, but uploads failed',
+            'Your task was created. You can add files later from the task details screen.'
+          );
+        }
+      }
+
       navigation.goBack();
     } catch (error) {
       Alert.alert(
@@ -173,6 +188,12 @@ export default function AddTaskScreen({ navigation }) {
             <Text style={styles.iosDoneText}>Done</Text>
           </TouchableOpacity>
         )}
+
+        <FilePickerSection
+          files={files}
+          onChange={setFiles}
+          disabled={loading}
+        />
 
         <TouchableOpacity
           style={[styles.saveButton, loading && styles.saveButtonDisabled]}

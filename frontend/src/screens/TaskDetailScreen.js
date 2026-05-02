@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import client from '../api/client';
+import { uploadAttachments } from '../api/attachments';
+import FilePickerSection from '../components/FilePickerSection';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Done'];
 const PRIORITY_OPTIONS = ['High', 'Medium', 'Low'];
@@ -29,8 +31,10 @@ export default function TaskDetailScreen({ route, navigation }) {
   const [dueDate, setDueDate] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -88,6 +92,27 @@ export default function TaskDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleUpload = async () => {
+    if (pendingFiles.length === 0) {
+      Alert.alert('No files selected', 'Pick at least one file to upload');
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data } = await uploadAttachments(taskId, pendingFiles);
+      setAttachments(data.attachments || []);
+      setPendingFiles([]);
+      Alert.alert('Upload complete', `${pendingFiles.length} file(s) uploaded`);
+    } catch (error) {
+      Alert.alert(
+        'Upload failed',
+        error.response?.data?.message || 'Please try again.'
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDelete = () => {
     Alert.alert('Delete task', 'Are you sure? This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -136,7 +161,7 @@ export default function TaskDetailScreen({ route, navigation }) {
     );
   }
 
-  const busy = saving || deleting;
+  const busy = saving || deleting || uploading;
 
   return (
     <KeyboardAvoidingView
@@ -244,7 +269,7 @@ export default function TaskDetailScreen({ route, navigation }) {
 
         {attachments.length > 0 && (
           <>
-            <Text style={styles.label}>Attachments ({attachments.length})</Text>
+            <Text style={styles.label}>Existing attachments ({attachments.length})</Text>
             <View style={styles.attachmentList}>
               {attachments.map((att, idx) => (
                 <TouchableOpacity
@@ -265,6 +290,29 @@ export default function TaskDetailScreen({ route, navigation }) {
               ))}
             </View>
           </>
+        )}
+
+        <FilePickerSection
+          files={pendingFiles}
+          onChange={setPendingFiles}
+          disabled={busy}
+          label="Add new attachments"
+        />
+
+        {pendingFiles.length > 0 && (
+          <TouchableOpacity
+            style={[styles.uploadButton, busy && styles.disabled]}
+            onPress={handleUpload}
+            disabled={busy}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.uploadButtonText}>
+                Upload {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''}
+              </Text>
+            )}
+          </TouchableOpacity>
         )}
 
         <TouchableOpacity
@@ -400,6 +448,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 12,
+  },
+  uploadButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  uploadButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   saveButton: {
     backgroundColor: '#2563eb',
