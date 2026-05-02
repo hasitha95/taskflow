@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # Uploaded files (user content, not project code)
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Submission docs (kept locally only)
+docs/
